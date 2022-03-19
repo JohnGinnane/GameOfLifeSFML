@@ -14,15 +14,19 @@ namespace GameOfLifeSFML {
 
         private CircleShape cs;
 
+        public Vector2f lastViewPos;
+        public View view;
+
         public GameOfLife() {
             window = new RenderWindow(new VideoMode((uint)Global.ScreenSize.X, (uint)Global.ScreenSize.Y), "Game Of Life", Styles.Close);
-            View view = new View(Global.ScreenSize/2f, Global.ScreenSize);
+            view = new View(Global.ScreenSize/2f, Global.ScreenSize);
             window.SetView(view);
             window.SetKeyRepeatEnabled(false);
             window.Closed += window_CloseWindow;
             lastUpdate = DateTime.Now;
             
             window.SetMouseCursor(new Cursor(Cursor.CursorType.SizeAll));
+            lastViewPos = new Vector2f();
 
             cs = new CircleShape(100f);
             cs.Origin = new SFML.System.Vector2f(100f, 100f);
@@ -30,6 +34,8 @@ namespace GameOfLifeSFML {
             cs.OutlineColor = Color.Black;
             cs.OutlineThickness = 2f;
             cs.FillColor = Color.Red;
+
+            Global.InitMouse(window);
         }
 
         public void window_CloseWindow(object sender, EventArgs e) {
@@ -62,15 +68,37 @@ namespace GameOfLifeSFML {
             }
 
             if (Global.Mouse["left"].justPressed) {
-                cs.Position = (Vector2f)Global.Mouse.ClickPosition;
+                lastViewPos = view.Center + (Vector2f)Global.Mouse.Position;
+            } else
+            if (Global.Mouse["left"].isPressed) {
+                view.Center = lastViewPos - (Vector2f)Global.Mouse.Position;
+                window.SetView(view);
             }
         }
 
         public void draw() {
-            window.Clear(Color.Blue);
+            window.Clear(Colour.LightBlue);
             
             window.Draw(cs);
 
+            // draw cursor position text
+            Text cursorText = new Text(string.Format("{0}, {1}", Global.Mouse.Position.X, Global.Mouse.Position.Y), Fonts.Arial);
+            cursorText.Position = window.MapPixelToCoords(Global.Mouse.Position) + new Vector2f(10, 10);
+            cursorText.FillColor = Color.White;
+            cursorText.CharacterSize = 12;
+            cursorText.OutlineColor = Color.Black;
+            cursorText.OutlineThickness = 1f;
+            window.Draw(cursorText);
+
+            // draw view center position text
+            Text viewCenterText = new Text(string.Format("{0}, {1}", view.Center.X, view.Center.Y), Fonts.Arial);
+            viewCenterText.Position = window.MapPixelToCoords(new Vector2i(10, 10));
+            viewCenterText.FillColor = Color.White;
+            viewCenterText.CharacterSize = 12;
+            viewCenterText.OutlineColor = Color.Black;
+            viewCenterText.OutlineThickness = 1.0f;
+            window.Draw(viewCenterText);
+            
             window.Display();
         }
     }

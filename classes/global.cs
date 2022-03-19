@@ -14,9 +14,13 @@ namespace GameOfLifeSFML {
             get { return kb; }
         }
 
-        private static mouse mouse = new mouse();
+        private static mouse mouse;
         public static mouse Mouse  {
             get { return mouse; }
+        }
+
+        public static void InitMouse(RenderWindow window) {
+            mouse = new mouse(window);
         }
     }
 }
