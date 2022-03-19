@@ -38,6 +38,14 @@ namespace GameOfLifeSFML {
     }
 
     public class mouse {
+        /*
+            Left,
+            Right,
+            Middle,
+            XButton1,
+            XButton2,
+            ButtonCount (5)
+        */
         private List<button> buttons;
         private Vector2i position;
         public Vector2i Position {
@@ -46,6 +54,12 @@ namespace GameOfLifeSFML {
                 Mouse.SetPosition((Vector2i)value);
                 this.position = value;
             }
+        }
+
+        private Vector2i clickPosition;
+        public Vector2i ClickPosition {
+            get { return clickPosition; }
+            set { clickPosition = value; }
         }
 
         public mouse() {
@@ -69,6 +83,7 @@ namespace GameOfLifeSFML {
 
                 if (!lastPressed && buttons[k].isPressed) {
                     buttons[k].justPressed = true;
+                    clickPosition = Position;
                 }
 
                 if (lastPressed && !buttons[k].isPressed) {
