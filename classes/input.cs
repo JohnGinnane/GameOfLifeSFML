@@ -21,7 +21,7 @@ namespace GameOfLifeSFML {
         }
     }
 
-    public class button {
+    public class mouseButton {
         public string name;
         public int code;
         public bool isPressed;
@@ -31,7 +31,7 @@ namespace GameOfLifeSFML {
         public bool justPressed;
         public bool justReleased;
 
-        public button(string name, int code) {
+        public mouseButton(string name, int code) {
             this.name = name;
             this.code = code;
         }
@@ -42,11 +42,11 @@ namespace GameOfLifeSFML {
             Left,
             Right,
             Middle,
-            XButton1,
-            XButton2,
-            ButtonCount (5)
+            XmouseButton1,
+            XmouseButton2,
+            mouseButtonCount (5)
         */
-        private List<button> buttons;
+        private List<mouseButton> mouseButtons;
         private Vector2i position;
         public Vector2i Position {
             get { return this.position; }
@@ -61,47 +61,47 @@ namespace GameOfLifeSFML {
             get { return clickPosition; }
             set { clickPosition = value; }
         }
-
+        
         public mouse() {
-            buttons = new List<button>();
+            mouseButtons = new List<mouseButton>();
 
             for (int k = (int)Mouse.Button.Left; k < (int)Mouse.Button.ButtonCount; k++) {
-                button v = new button(((Mouse.Button)k).ToString(), k);
-                buttons.Add(v);
+                mouseButton v = new mouseButton(((Mouse.Button)k).ToString(), k);
+                mouseButtons.Add(v);
             }
         }
 
         public void update(RenderWindow window) {
             for (int k = (int)Mouse.Button.Left; k < (int)Mouse.Button.ButtonCount; k++) {                
-                bool lastPressed = buttons[k].isPressed;
+                bool lastPressed = mouseButtons[k].isPressed;
 
-                buttons[k].justPressed = false;
-                buttons[k].justReleased = false;
+                mouseButtons[k].justPressed = false;
+                mouseButtons[k].justReleased = false;
 
-                buttons[k].isPressed = Mouse.IsButtonPressed((Mouse.Button)k);
+                mouseButtons[k].isPressed = Mouse.IsButtonPressed((Mouse.Button)k);
 
-                if (!lastPressed && buttons[k].isPressed) {
-                    buttons[k].justPressed = true;
+                if (!lastPressed && mouseButtons[k].isPressed) {
+                    mouseButtons[k].justPressed = true;
                     clickPosition = Position;
                 }
 
-                if (lastPressed && !buttons[k].isPressed) {
-                    buttons[k].justReleased = true;
+                if (lastPressed && !mouseButtons[k].isPressed) {
+                    mouseButtons[k].justReleased = true;
                 }
             }
 
             this.position = Mouse.GetPosition(window);
         }
 
-        public button this[string name] => FindKeyIndex(name);
+        public mouseButton this[string name] => FindKeyIndex(name);
 
-        private button FindKeyIndex(string name) {
-            button output;
+        private mouseButton FindKeyIndex(string name) {
+            mouseButton output;
 
-            output = buttons.Find(x => x.name.ToLower() == name.ToLower());
+            output = mouseButtons.Find(x => x.name.ToLower() == name.ToLower());
 
             if (output == null) {
-                return new button("Unknown", -1);
+                return new mouseButton("Unknown", -1);
             }
 
             return output;
