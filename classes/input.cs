@@ -62,31 +62,17 @@ namespace GameOfLifeSFML {
             set { clickPosition = value; }
         }
 
-        private float scroll;
-
-        public bool JustScrolledUp => scroll > 0;
-        public bool JustScrolledDown => scroll < 0;
-
-        public mouse(RenderWindow window) {
+        public mouse() {
             buttons = new List<button>();
 
             for (int k = (int)Mouse.Button.Left; k < (int)Mouse.Button.ButtonCount; k++) {
                 button v = new button(((Mouse.Button)k).ToString(), k);
                 buttons.Add(v);
             }
-
-            window.MouseWheelScrolled += mouseWheelScrolled;
-        }
-
-        private void mouseWheelScrolled(object sender, MouseWheelScrollEventArgs e) {
-            if (e.Wheel == Mouse.Wheel.VerticalWheel) {
-                scroll += e.Delta;
-            }
         }
 
         public void update(RenderWindow window) {
-            for (int k = (int)Mouse.Button.Left; k < (int)Mouse.Button.ButtonCount; k++) {
-                
+            for (int k = (int)Mouse.Button.Left; k < (int)Mouse.Button.ButtonCount; k++) {                
                 bool lastPressed = buttons[k].isPressed;
 
                 buttons[k].justPressed = false;
@@ -105,14 +91,6 @@ namespace GameOfLifeSFML {
             }
 
             this.position = Mouse.GetPosition(window);
-
-            if (scroll != 0) {
-                if (Math.Abs(scroll) == 1) {
-                    scroll -= scroll / 2f;
-                } else {
-                    scroll -= scroll;
-                }
-            }
         }
 
         public button this[string name] => FindKeyIndex(name);

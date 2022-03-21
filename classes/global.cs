@@ -10,17 +10,9 @@ namespace GameOfLifeSFML {
         }
 
         private static keyboard kb = new keyboard();
-        public static keyboard Keyboard {
-            get { return kb; }
-        }
+        public static keyboard Keyboard => kb;
 
-        private static mouse mouse;
-        public static mouse Mouse  {
-            get { return mouse; }
-        }
-
-        public static void InitMouse(RenderWindow window) {
-            mouse = new mouse(window);
-        }
+        private static mouse mouse = new mouse();
+        public static mouse Mouse => mouse;
     }
 }
