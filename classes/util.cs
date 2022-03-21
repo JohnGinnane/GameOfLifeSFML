@@ -6,6 +6,11 @@ using System;
 
 namespace GameOfLifeSFML {
     public static class util {
+        public static bool randbit() {
+            Random r = new Random((int)DateTime.Now.Ticks%Int32.MaxValue);
+            return r.Next(2) == 0;
+        }
+        
         public static Vector2f randvec2(float minx, float maxx, float miny, float maxy) {
             Vector2f v = new Vector2f();
             v.X = randfloat(minx, maxx);

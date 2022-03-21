@@ -13,8 +13,6 @@ namespace GameOfLifeSFML {
         public const float timeStep = 1000f / 100f;
         public float timeScale = 1.0f;
 
-        List<Drawable> shapes = new List<Drawable>();
-
         public Vector2f lastViewPos;
         public View gridView;
 
@@ -25,8 +23,18 @@ namespace GameOfLifeSFML {
                 return gridView.Size.X / Global.ScreenSize.X;
             }
         }
+
+        private int rows = 30;
+        private int cols = 30;
         
         private const float scrollSpeed = 50f;
+
+        private cell[][] cells;
+
+        private bool wrapScreen = false;
+
+        private DateTime lastSimulation;
+        private float simulationSpeed = 30f;
 
         public GameOfLife() {
             window = new RenderWindow(new VideoMode((uint)Global.ScreenSize.X, (uint)Global.ScreenSize.Y), "Game Of Life", Styles.Close);
@@ -39,8 +47,10 @@ namespace GameOfLifeSFML {
             
             lastViewPos = new Vector2f();
             
-            makeRandomShapes();
+            generateGrid();
             window.MouseWheelScrolled += mouseWheelScrolled;
+
+            lastSimulation = DateTime.Now;
         }
 
         public void window_CloseWindow(object sender, EventArgs e) {
@@ -81,52 +91,72 @@ namespace GameOfLifeSFML {
                 window.Close();
             }
 
+            if (Global.Keyboard["r"].justPressed) {
+                generateGrid();
+            }
+
             handleCamera(delta);
+
+            if (DateTime.Now > lastSimulation.AddSeconds(1 / simulationSpeed)) {
+                lastSimulation = DateTime.Now;
+
+                // prepare new states array
+                bool[][] newStates = new bool[rows+2][];
+                for (int i = 0; i < newStates.Length; i++) {
+                    newStates[i] = new bool[cols+2];
+                    for (int j = 0; j < newStates[i].Length; j++) {
+                        newStates[i][j] = false;
+                    }
+                }
+
+                // iterate over all the cells and determine next generation
+                for (int row = 1; row < cells.Length - 1; row++) {
+                    for (int col = 1; col < cells[row].Length - 1; col++) {
+                        cell c = cells[row][col];
+                        int livingNeighbours = 0;
+                        List<Vector2i> neighbourIndices = getNeighbourIndices(row, col);
+                        foreach (Vector2i v in neighbourIndices) {
+                            if (cells[v.Y][v.X] == null) { continue; }
+                            if (cells[v.Y][v.X].State) {
+                                livingNeighbours++;
+                            }
+                        }
+
+                        newStates[row][col] = c.checkRules(livingNeighbours);
+                    }
+                }
+
+                // iterate over all cells again and set their new states
+                for (int row = 1; row < cells.Length - 1; row++) {
+                    for (int col = 1; col < cells[row].Length - 1; col++) {
+                        cells[row][col].State = newStates[row][col];
+                    }
+                }
+            }
         }
 
         public void draw() {
             window.Clear(Colour.LightBlue);
             window.SetView(gridView);
-            
-            foreach(Drawable d in shapes) {
-                window.Draw(d);
+
+            for (int row = 1; row < cells.Length - 1; row++) {
+                for (int col = 1; col < cells[row].Length - 1; col++) {
+                    RectangleShape rs = new RectangleShape(new Vector2f(cell.Width, cell.Height));
+                    rs.OutlineColor = cell.OutlineColour;
+                    rs.OutlineThickness = cell.OutlineThickness;
+                    rs.Position = new Vector2f(col * (cell.Width  + cell.OutlineThickness * 2 + cell.Spacing),
+                                               row * (cell.Height + cell.OutlineThickness * 2 + cell.Spacing));
+
+                    if (cells[row][col].State) {
+                        rs.FillColor = Color.White;
+                    } else {
+                        rs.FillColor = Colour.Grey;
+                    }
+                    window.Draw(rs);
+                }
             }
-
-            window.SetView(interfaceView);
-
-            // // draw cursor position text
-            // Text cursorText = new Text(string.Format("{0}, {1}", Global.Mouse.Position.X, Global.Mouse.Position.Y), Fonts.Arial);
-            // cursorText.Position = window.MapPixelToCoords(Global.Mouse.Position) + new Vector2f(10, 10);
-            // cursorText.FillColor = Color.White;
-            // cursorText.CharacterSize = 12;
-            // cursorText.OutlineColor = Color.Black;
-            // cursorText.OutlineThickness = 1f;
-            // window.Draw(cursorText);
-
-            // // draw cursor world position text
-            // cursorText.DisplayedString = string.Format("{0}, {1}",
-            //                                            window.MapPixelToCoords(Global.Mouse.Position, gridView).X,
-            //                                            window.MapPixelToCoords(Global.Mouse.Position, gridView).Y);
-            // cursorText.Position = window.MapPixelToCoords(Global.Mouse.Position) + new Vector2f(10, 24);
-            // window.Draw(cursorText);
-
-            // // draw view center position text
-            // Text viewCenterText = new Text(string.Format("{0}, {1}", gridView.Center.X, gridView.Center.Y), Fonts.Arial);
-            // viewCenterText.Position = window.MapPixelToCoords(new Vector2i(10, 10));
-            // viewCenterText.FillColor = Color.White;
-            // viewCenterText.CharacterSize = 12;
-            // viewCenterText.OutlineColor = Color.Black;
-            // viewCenterText.OutlineThickness = 1.0f;
-            // window.Draw(viewCenterText);
             
-            // // draw view size text
-            // Text viewSizeText = new Text(string.Format("Grid View Size: {0}, {1}", gridView.Size.X, gridView.Size.Y), Fonts.Arial);
-            // viewSizeText.Position = window.MapPixelToCoords(new Vector2i(10, 24));
-            // viewSizeText.FillColor = Color.White;
-            // viewSizeText.CharacterSize = 12;
-            // viewSizeText.OutlineColor = Color.Black;
-            // viewSizeText.OutlineThickness = 1.0f;
-            // window.Draw(viewSizeText);
+            window.SetView(interfaceView);
 
             window.Display();
         }
@@ -181,29 +211,43 @@ namespace GameOfLifeSFML {
             gridView.Zoom(zoomFactor);
         }
 
-        private void makeRandomShapes() {
-            int numShapes = 20;
-            while (numShapes > 0) {
-                switch (util.randint(0, 1)) {
-                    case 0:
-                        CircleShape cs = new CircleShape(util.randfloat(20, 80));
-                        cs.Origin = new Vector2f(cs.Radius, cs.Radius);
-                        cs.FillColor = util.hsvtocol(util.randfloat(0, 360), 1, 1);
-                        cs.OutlineColor = Color.Black;
-                        cs.OutlineThickness = 2f;
-                        cs.Position = util.randvec2(-1000, 1000);
-                        shapes.Add(cs);
-                        break;
-                    case 1:
-                        RectangleShape rs = new RectangleShape(util.randvec2(20, 80));
-                        rs.FillColor = util.hsvtocol(util.randfloat(0, 360), 1, 1);
-                        rs.OutlineColor = Color.Black;
-                        rs.OutlineThickness = 2f;
-                        rs.Position = util.randvec2(-1000, 1000);
-                        shapes.Add(rs);
-                        break;
+        private List<Vector2i> getNeighbourIndices(int row, int col) {
+            List<Vector2i> neighbours = new List<Vector2i>();
+            neighbours.Add(new Vector2i(col - 1, row - 1));
+            neighbours.Add(new Vector2i(col,     row - 1));
+            neighbours.Add(new Vector2i(col + 1, row - 1));
+
+            neighbours.Add(new Vector2i(col - 1, row));
+            neighbours.Add(new Vector2i(col + 1, row));
+
+            neighbours.Add(new Vector2i(col - 1, row + 1));
+            neighbours.Add(new Vector2i(col,     row + 1));
+            neighbours.Add(new Vector2i(col + 1, row + 1));
+
+            if (wrapScreen) {
+                for (int i = 0; i < neighbours.Count; i++) {
+                    if (neighbours[i].X < 1)     { neighbours[i] = new Vector2i(cols - 2, neighbours[i].Y); }
+                    if (neighbours[i].X >= rows) { neighbours[i] = new Vector2i(1,        neighbours[i].Y); }
+                    if (neighbours[i].Y < 1)     { neighbours[i] = new Vector2i(neighbours[i].X, rows - 2); }
+                    if (neighbours[i].Y >= cols) { neighbours[i] = new Vector2i(neighbours[i].X, 1       ); }
                 }
-                numShapes--;
+            }
+
+            return neighbours;
+        }
+
+        private void generateGrid() {
+            cells = null;
+
+            cells = new cell[rows+2][];
+            for (int row = 0; row < cells.Length; row++) {
+                cells[row] = new cell[cols+2];
+            }
+
+            for (int row = 1; row < cells.Length-1; row++) {
+                for (int col = 1; col < cells[row].Length-1; col++) {
+                    cells[row][col] = new cell(util.randbit());
+                }
             }
         }
     }
