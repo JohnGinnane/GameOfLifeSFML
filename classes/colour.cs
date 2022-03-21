@@ -4,5 +4,6 @@ namespace GameOfLifeSFML {
     public static class Colour {
         public static Color LightBlue = new Color(189, 212, 230);
         public static Color Grey = new Color(127, 127, 127);
+        public static Color DarkGreen = new Color(0, 127, 0);
     }
 }

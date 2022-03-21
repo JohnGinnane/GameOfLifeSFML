@@ -24,8 +24,8 @@ namespace GameOfLifeSFML {
             }
         }
 
-        private int rows = 30;
-        private int cols = 30;
+        private int rows = 60;
+        private int cols = 60;
         
         private const float scrollSpeed = 50f;
 
@@ -34,7 +34,11 @@ namespace GameOfLifeSFML {
         private bool wrapScreen = false;
 
         private DateTime lastSimulation;
+        private float lastSimulationSpeed = 0f;
         private float simulationSpeed = 30f;
+
+        // when we click and drag are we setting the affected cells alive or dead?
+        private int mouseSettingState = 0;
 
         public GameOfLife() {
             window = new RenderWindow(new VideoMode((uint)Global.ScreenSize.X, (uint)Global.ScreenSize.Y), "Game Of Life", Styles.Close);
@@ -91,45 +95,78 @@ namespace GameOfLifeSFML {
                 window.Close();
             }
 
+            if (Global.Keyboard["space"].justPressed) {
+                if (simulationSpeed > 0) {
+                    lastSimulationSpeed = simulationSpeed;
+                    simulationSpeed = 0f;
+                } else {
+                    simulationSpeed = lastSimulationSpeed;
+                }
+            }
+
+            if (Global.Mouse["left"].isPressed) {
+                cell cellUnderMouse = findCellUnderMouse();
+                
+                if (cellUnderMouse != null) {
+                    if (mouseSettingState == 0) {
+                        if (cellUnderMouse.State) { mouseSettingState = -1; } else { mouseSettingState = 1; }
+                    }
+
+                    if (mouseSettingState > 0) { cellUnderMouse.State = true; }
+                    if (mouseSettingState < 0) { cellUnderMouse.State = false; }
+                }
+            } else
+            if (Global.Mouse["left"].justReleased) {
+                mouseSettingState = 0;
+            }
+
             if (Global.Keyboard["r"].justPressed) {
                 generateGrid();
             }
 
+            if (Global.Keyboard["c"].justPressed) {
+                clearGrid();
+            }
+
             handleCamera(delta);
 
-            if (DateTime.Now > lastSimulation.AddSeconds(1 / simulationSpeed)) {
-                lastSimulation = DateTime.Now;
+            if (simulationSpeed > 0) {
+                if (DateTime.Now > lastSimulation.AddSeconds(1 / simulationSpeed)) {
+                    lastSimulation = DateTime.Now;
 
-                // prepare new states array
-                bool[][] newStates = new bool[rows+2][];
-                for (int i = 0; i < newStates.Length; i++) {
-                    newStates[i] = new bool[cols+2];
-                    for (int j = 0; j < newStates[i].Length; j++) {
-                        newStates[i][j] = false;
-                    }
-                }
-
-                // iterate over all the cells and determine next generation
-                for (int row = 1; row < cells.Length - 1; row++) {
-                    for (int col = 1; col < cells[row].Length - 1; col++) {
-                        cell c = cells[row][col];
-                        int livingNeighbours = 0;
-                        List<Vector2i> neighbourIndices = getNeighbourIndices(row, col);
-                        foreach (Vector2i v in neighbourIndices) {
-                            if (cells[v.Y][v.X] == null) { continue; }
-                            if (cells[v.Y][v.X].State) {
-                                livingNeighbours++;
-                            }
+                    // prepare new states array
+                    bool[][] newStates = new bool[rows+2][];
+                    for (int i = 0; i < newStates.Length; i++) {
+                        newStates[i] = new bool[cols+2];
+                        for (int j = 0; j < newStates[i].Length; j++) {
+                            newStates[i][j] = false;
                         }
-
-                        newStates[row][col] = c.checkRules(livingNeighbours);
                     }
-                }
 
-                // iterate over all cells again and set their new states
-                for (int row = 1; row < cells.Length - 1; row++) {
-                    for (int col = 1; col < cells[row].Length - 1; col++) {
-                        cells[row][col].State = newStates[row][col];
+                    // iterate over all the cells and determine next generation
+                    for (int row = 1; row < cells.Length - 1; row++) {
+                        for (int col = 1; col < cells[row].Length - 1; col++) {
+                            cell c = cells[row][col];
+                            c.update(delta);
+
+                            int livingNeighbours = 0;
+                            List<Vector2i> neighbourIndices = getNeighbourIndices(row, col);
+                            foreach (Vector2i v in neighbourIndices) {
+                                if (cells[v.Y][v.X] == null) { continue; }
+                                if (cells[v.Y][v.X].State) {
+                                    livingNeighbours++;
+                                }
+                            }
+
+                            newStates[row][col] = c.checkRules(livingNeighbours);
+                        }
+                    }
+
+                    // iterate over all cells again and set their new states
+                    for (int row = 1; row < cells.Length - 1; row++) {
+                        for (int col = 1; col < cells[row].Length - 1; col++) {
+                            cells[row][col].State = newStates[row][col];
+                        }
                     }
                 }
             }
@@ -139,19 +176,31 @@ namespace GameOfLifeSFML {
             window.Clear(Colour.LightBlue);
             window.SetView(gridView);
 
+            cell cellUnderMouse = findCellUnderMouse();
             for (int row = 1; row < cells.Length - 1; row++) {
                 for (int col = 1; col < cells[row].Length - 1; col++) {
+                    cell thisCell = cells[row][col];
+
                     RectangleShape rs = new RectangleShape(new Vector2f(cell.Width, cell.Height));
-                    rs.OutlineColor = cell.OutlineColour;
+                    rs.FillColor = thisCell.Temperature;
                     rs.OutlineThickness = cell.OutlineThickness;
                     rs.Position = new Vector2f(col * (cell.Width  + cell.OutlineThickness * 2 + cell.Spacing),
                                                row * (cell.Height + cell.OutlineThickness * 2 + cell.Spacing));
 
-                    if (cells[row][col].State) {
-                        rs.FillColor = Color.White;
+                    if (thisCell.State) {
+                        if (cellUnderMouse == thisCell) {
+                            rs.OutlineColor = Color.Green;
+                        } else {
+                            rs.OutlineColor = Color.Black;
+                        }
                     } else {
-                        rs.FillColor = Colour.Grey;
+                        if (cellUnderMouse == thisCell) {
+                            rs.OutlineColor = Colour.DarkGreen;
+                        } else {
+                            rs.OutlineColor = Color.White;
+                        }
                     }
+
                     window.Draw(rs);
                 }
             }
@@ -159,6 +208,25 @@ namespace GameOfLifeSFML {
             window.SetView(interfaceView);
 
             window.Display();
+        }
+
+        private cell findCellUnderMouse() {
+            cell cellUnderMouse = null;
+
+            for (int row = 1; row < cells.Length - 1; row++) {
+                if (cellUnderMouse != null) { break; }
+                for (int col = 1; col < cells[row].Length - 1; col++) {
+                    Vector2f cellPosition = new Vector2f(col * (cell.Width  + cell.OutlineThickness * 2 + cell.Spacing),
+                                                            row * (cell.Height + cell.OutlineThickness * 2 + cell.Spacing));
+                    if (intersection.pointInsideRectangle(window.MapPixelToCoords(Global.Mouse.Position, gridView),
+                                                            new FloatRect(cellPosition.X, cellPosition.Y, cell.Width, cell.Height))) {
+                        cellUnderMouse = cells[row][col];
+                        break;
+                    }
+                }
+            }
+
+            return cellUnderMouse;
         }
 
         private void handleCamera(float delta) {
@@ -234,6 +302,21 @@ namespace GameOfLifeSFML {
             }
 
             return neighbours;
+        }
+
+        private void clearGrid() {
+            cells = null;
+
+            cells = new cell[rows+2][];
+            for (int row = 0; row < cells.Length; row++) {
+                cells[row] = new cell[cols+2];
+            }
+
+            for (int row = 1; row < cells.Length-1; row++) {
+                for (int col = 1; col < cells[row].Length-1; col++) {
+                    cells[row][col] = new cell(false);
+                }
+            }
         }
 
         private void generateGrid() {

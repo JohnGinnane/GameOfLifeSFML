@@ -9,7 +9,7 @@ namespace GameOfLifeSFML
         {
             Global.ScreenSize = new SFML.System.Vector2f(800, 600);
             game = new GameOfLife();
-            game.run();            
+            game.run();
         }
     }
 }
