@@ -168,5 +168,9 @@ namespace GameOfLifeSFML {
         public static Vector2f randomScreenPos() {
             return randvec2(0, Global.ScreenSize.X, 0, Global.ScreenSize.Y);
         }
+
+        public static void Use<T>(this T item, Action<T> work) {
+            work(item);
+        }
     } // end class
 } // end namespace

@@ -6,6 +6,7 @@ using SFML.System;
 
 namespace GameOfLifeSFML {
     public class GameOfLife {
+#region "Properties"
         private RenderWindow window;
 
         private DateTime lastUpdate;
@@ -39,9 +40,11 @@ namespace GameOfLifeSFML {
 
         // when we click and drag are we setting the affected cells alive or dead?
         private int mouseSettingState = 0;
+        private View mouseLockedToView;
 
-        private button PlayPause;
+        private button PlayPauseButton;
         private List<button> buttons;
+#endregion
 
         public GameOfLife() {
             window = new RenderWindow(new VideoMode((uint)Global.ScreenSize.X, (uint)Global.ScreenSize.Y), "Game Of Life", Styles.Close);
@@ -61,26 +64,58 @@ namespace GameOfLifeSFML {
 
             buttons = new List<button>();
 
-            PlayPause = new button();
-            PlayPause.Size = new Vector2f(150, 30);
-            PlayPause.Position = new Vector2f(Global.ScreenSize.X / 2f, Global.ScreenSize.Y - 50);
-            PlayPause.Text = "Pause";
-            PlayPause.CharacterSize = 16;
-            PlayPause.Click += PlayPause_Click;
-            buttons.Add(PlayPause);
+            PlayPauseButton = new button();
+            PlayPauseButton.Size = new Vector2f(150, 30);
+            PlayPauseButton.Position = new Vector2f(Global.ScreenSize.X / 2f - PlayPauseButton.Size.X / 2f, Global.ScreenSize.Y - PlayPauseButton.Size.Y * 1.5f);
+            PlayPauseButton.Text = "Pause";
+            PlayPauseButton.IsToggle = true;
+            PlayPauseButton.CharacterSize = 16;
+            PlayPauseButton.Click += PlayPauseButton_Click;
+            buttons.Add(PlayPauseButton);
             playPauseSimulation();
+
+            button ResetGridButton = new button();
+            ResetGridButton.Use(b => {
+                b.Size = new Vector2f(100, 30);
+                b.Position = PlayPauseButton.Position + new Vector2f(160, 0);
+                b.Text = "Clear Grid [C]";
+                b.CharacterSize = 16;
+                b.Click += ClearGridButton_Click;
+                buttons.Add(b);
+            });
+
+            button RandomiseGridButton = new button();
+            RandomiseGridButton.Use(b => {
+                b.Size = new Vector2f(120, 30);
+                b.Position = PlayPauseButton.Position + new Vector2f(-130, 0);
+                b.Text = "Randomise [R]";
+                b.CharacterSize = 16;
+                b.Click += RandomiseGridButton_Click;
+                buttons.Add(b);
+            });
         }
 
+#region "Events"
         public void window_CloseWindow(object sender, EventArgs e) {
             if (sender == null) { return; }
             window.Close();
         }
 
-        public void PlayPause_Click(object sender, EventArgs e) {
+        public void PlayPauseButton_Click(object sender, EventArgs e) {
             playPauseSimulation();
         }
 
+        private void ClearGridButton_Click(object sender, EventArgs e) {
+            clearGrid();
+        }
+
+        private void RandomiseGridButton_Click(object sender, EventArgs e) {
+            generateGrid();
+        }
+
         private void mouseWheelScrolled(object sender, MouseWheelScrollEventArgs e) {
+            if (buttonUnderMouse() != null) { return; }
+
             if (e.Delta < 0) {
                 gridView.Zoom(1 - 0.001f * e.Delta * scrollSpeed);
             } else
@@ -88,7 +123,9 @@ namespace GameOfLifeSFML {
                 zoomViewToMouse(1 - 0.001f * e.Delta * scrollSpeed);
             }
         }
+#endregion
 
+#region "Main"
         public void run() {
             while (window.IsOpen) {
                 if (!window.HasFocus()) { continue; }
@@ -125,14 +162,27 @@ namespace GameOfLifeSFML {
                 clearGrid();
             }
 
+            if (Global.Mouse["left"].justReleased || Global.Mouse["right"].justReleased) {
+                mouseLockedToView = null;
+            }
+
             // check if the mouse is hovering over the UI or the grid
             button buttonMouse = buttonUnderMouse();
-            if (buttonMouse != null) {
+            if (buttonMouse != null && mouseLockedToView != gridView) {
+                if ((Global.Mouse["left"].isPressed || Global.Mouse["right"].isPressed) && mouseLockedToView == null) {
+                    mouseLockedToView = interfaceView;
+                }
+
                 // handle buttons and stuff
                 if (Global.Mouse["left"].justReleased) {
                     buttonMouse.Click?.Invoke(buttonMouse, null);
                 }
-            } else {
+            } else
+            if (buttonMouse == null && mouseLockedToView != interfaceView) {
+                if ((Global.Mouse["left"].isPressed || Global.Mouse["right"].isPressed) && mouseLockedToView == null) {
+                    mouseLockedToView = gridView;
+                }
+
                 // handle grid stuff
                 if (Global.Mouse["left"].isPressed) {
                     cell cellUnderMouse = findCellUnderMouse();
@@ -233,31 +283,41 @@ namespace GameOfLifeSFML {
             foreach (button b in buttons) {
                 b.draw(window);
             }
-            
+
             window.Display();
         }
+#endregion
 
+#region "Functions"
         private void playPauseSimulation() {
             if (simulationSpeed > 0) {
                 lastSimulationSpeed = simulationSpeed;
                 simulationSpeed = 0f;
-                PlayPause.Text = "Play [spacebar]";
+                PlayPauseButton.Text = "Play [spacebar]";
             } else {
                 simulationSpeed = lastSimulationSpeed;
-                PlayPause.Text = "Pause [spacebar]";
+                PlayPauseButton.Text = "Pause [spacebar]";
             }
         }
 
         private button buttonUnderMouse() {
+            if (mouseLockedToView == gridView) { return null; }
+            button bUnderMouse = null;
+
             foreach (button b in buttons) {
-                b.OutlineThickness = 1f;
-                if (b.Dimensions.Contains(Global.Mouse.Position.X, Global.Mouse.Position.Y)) {
-                    b.OutlineThickness = 2f;
-                    return b;
+                b.MouseHovering = false;
+                b.MousePressing = false;
+
+                if (bUnderMouse == null) {
+                    if (b.Dimensions.Contains(Global.Mouse.Position.X, Global.Mouse.Position.Y)) {
+                        b.MouseHovering = true;
+                        b.MousePressing = Global.Mouse["left"].isPressed;
+                        bUnderMouse = b;
+                    }
                 }
             }
 
-            return null;
+            return bUnderMouse;
         }
 
         private cell findCellUnderMouse() {
@@ -389,5 +449,6 @@ namespace GameOfLifeSFML {
                 }
             }
         }
+#endregion
     }
 }
