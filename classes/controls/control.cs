@@ -43,9 +43,6 @@ namespace GameOfLifeSFML {
             set { fillColour = value; }
         }
 
-        protected bool mouseClickedOverControl = false;
-        public bool MouseClickedOverControl => mouseClickedOverControl;
-
         protected bool mouseHovering = false;
         public bool MouseHovering => mouseHovering;
 
@@ -75,18 +72,16 @@ namespace GameOfLifeSFML {
         public virtual void Control_MouseButtonPressed(object sender, MouseButtonEventArgs e) {
             if (MouseHovering) {
                 mousePressing = true;
-                mouseClickedOverControl = true;
             }
         }
 
         public virtual void Control_MouseButtonReleased(object sender, MouseButtonEventArgs e) {
             // only register a "click" if we started the click on this control
-            if (MouseHovering && MouseClickedOverControl) {
+            if (MouseHovering && MousePressing) {
                 this.Click?.Invoke(sender, e);
             }
             
             mousePressing = false;
-            mouseClickedOverControl = false;
         }
     }
 }
