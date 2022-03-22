@@ -127,7 +127,7 @@ namespace GameOfLifeSFML {
         }
 
         private void mouseWheelScrolled(object sender, MouseWheelScrollEventArgs e) {
-            if (buttonUnderMouse() != null) { return; }
+            if (controlUnderMouse() != null) { return; }
 
             if (e.Delta < 0) {
                 gridView.Zoom(1 - 0.001f * e.Delta * scrollSpeed);
@@ -184,16 +184,18 @@ namespace GameOfLifeSFML {
             // not sure what the downsides are yet though    
 
             // check if the mouse is hovering over the UI or the grid
-            control ctrlUnderMouse = buttonUnderMouse();
+            control ctrlUnderMouse = controlUnderMouse();
             
-            // handle buttons and stuff
+            // if you start a click and you're hovering over a control
+            // then "lock" the mouse so it only interacts with controls...
             if (ctrlUnderMouse != null && mouseLockedToView != gridView) {
                 if ((Input.Mouse["left"].isPressed || Input.Mouse["right"].isPressed) && mouseLockedToView == null) {
                     mouseLockedToView = interfaceView;
                 }
             } else
             
-            // handle grid stuff
+            // ...or lock it to the grid so you don't accidentally
+            // interact with the interface
             if (ctrlUnderMouse == null && mouseLockedToView != interfaceView) {
                 if ((Input.Mouse["left"].isPressed || Input.Mouse["right"].isPressed) && mouseLockedToView == null) {
                     mouseLockedToView = gridView;
@@ -204,6 +206,8 @@ namespace GameOfLifeSFML {
                     
                     if (cellUnderMouse != null) {
                         if (mouseSettingState == 0) {
+                            // if we clicked on a living cell then any new cells to hover over
+                            // will be set to dead, and vice versa
                             if (cellUnderMouse.State) { mouseSettingState = -1; } else { mouseSettingState = 1; }
                         }
 
@@ -320,7 +324,7 @@ namespace GameOfLifeSFML {
             }
         }
 
-        private control buttonUnderMouse() {
+        private control controlUnderMouse() {
             if (mouseLockedToView == gridView) { return null; }
 
             foreach (control c in controls) {
@@ -333,7 +337,7 @@ namespace GameOfLifeSFML {
         }
 
         private cell findCellUnderMouse() {
-            if (buttonUnderMouse() != null) { return null; }
+            if (controlUnderMouse() != null) { return null; }
 
             cell cellUnderMouse = null;
 
