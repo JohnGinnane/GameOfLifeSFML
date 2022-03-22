@@ -61,7 +61,7 @@ namespace GameOfLifeSFML {
             get { return clickPosition; }
             set { clickPosition = value; }
         }
-        
+
         public mouse() {
             mouseButtons = new List<mouseButton>();
 
@@ -153,5 +153,13 @@ namespace GameOfLifeSFML {
 
             return output;
         }
+    }
+
+    public static class Input {
+        private static keyboard keyboard = new keyboard();
+        public static keyboard Keyboard => keyboard;
+
+        private static mouse mouse = new mouse();
+        public static mouse Mouse => mouse;
     }
 }

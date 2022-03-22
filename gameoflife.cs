@@ -43,7 +43,8 @@ namespace GameOfLifeSFML {
         private View mouseLockedToView;
 
         private button PlayPauseButton;
-        private List<button> buttons;
+        private slider SimulationSpeedSlider;
+        private List<control> controls;
 #endregion
 
         public GameOfLife() {
@@ -62,16 +63,16 @@ namespace GameOfLifeSFML {
 
             lastSimulation = DateTime.Now;
 
-            buttons = new List<button>();
+            controls = new List<control>();
 
             PlayPauseButton = new button();
             PlayPauseButton.Size = new Vector2f(150, 30);
-            PlayPauseButton.Position = new Vector2f(Global.ScreenSize.X / 2f - PlayPauseButton.Size.X / 2f, Global.ScreenSize.Y - PlayPauseButton.Size.Y * 1.5f);
+            PlayPauseButton.Position = new Vector2f(Global.ScreenSize.X / 2f - PlayPauseButton.Size.X / 2f + 100, Global.ScreenSize.Y - PlayPauseButton.Size.Y * 1.5f);
             PlayPauseButton.Text = "Pause";
             PlayPauseButton.IsToggle = true;
             PlayPauseButton.CharacterSize = 16;
             PlayPauseButton.Click += PlayPauseButton_Click;
-            buttons.Add(PlayPauseButton);
+            controls.Add(PlayPauseButton);
             playPauseSimulation();
 
             button ResetGridButton = new button();
@@ -81,7 +82,7 @@ namespace GameOfLifeSFML {
                 b.Text = "Clear Grid [C]";
                 b.CharacterSize = 16;
                 b.Click += ClearGridButton_Click;
-                buttons.Add(b);
+                controls.Add(b);
             });
 
             button RandomiseGridButton = new button();
@@ -91,8 +92,20 @@ namespace GameOfLifeSFML {
                 b.Text = "Randomise [R]";
                 b.CharacterSize = 16;
                 b.Click += RandomiseGridButton_Click;
-                buttons.Add(b);
+                controls.Add(b);
             });
+
+            SimulationSpeedSlider = new slider();
+            SimulationSpeedSlider.Size = new Vector2f(200, 30);
+            SimulationSpeedSlider.Position = RandomiseGridButton.Position - new Vector2f(210, 0);
+            controls.Add(SimulationSpeedSlider);
+
+            // iterate over all controls and add mouse events
+            foreach (control c in controls) {
+                window.MouseMoved += c.Control_MouseMoved;
+                window.MouseButtonPressed += c.Control_MouseButtonPressed;
+                window.MouseButtonReleased += c.Control_MouseButtonReleased;
+            }
         }
 
 #region "Events"
@@ -143,48 +156,50 @@ namespace GameOfLifeSFML {
         }
 
         public void update(float delta) {
-            Global.Keyboard.update();
-            Global.Mouse.update(window);
+            Input.Keyboard.update();
+            Input.Mouse.update(window);
             
-            if (Global.Keyboard["escape"].isPressed) {
+            if (Input.Keyboard["escape"].isPressed) {
                 window.Close();
             }
 
-            if (Global.Keyboard["space"].justPressed) {
+            if (Input.Keyboard["space"].justPressed) {
                 playPauseSimulation();
             }
 
-            if (Global.Keyboard["r"].justPressed) {
+            if (Input.Keyboard["r"].justPressed) {
                 generateGrid();
             }
 
-            if (Global.Keyboard["c"].justPressed) {
+            if (Input.Keyboard["c"].justPressed) {
                 clearGrid();
             }
 
-            if (Global.Mouse["left"].justReleased || Global.Mouse["right"].justReleased) {
-                mouseLockedToView = null;
-            }
+            // TO DO:
+            // Rather than using the update code to handle the UI
+            // I should add events to all controls for whenever the mouse
+            // does anything like move or press a button
+            // this way each control can be aware of the mouse and
+            // respond more immediately
+            // not sure what the downsides are yet though    
 
             // check if the mouse is hovering over the UI or the grid
-            button buttonMouse = buttonUnderMouse();
-            if (buttonMouse != null && mouseLockedToView != gridView) {
-                if ((Global.Mouse["left"].isPressed || Global.Mouse["right"].isPressed) && mouseLockedToView == null) {
+            control ctrlUnderMouse = buttonUnderMouse();
+            
+            // handle buttons and stuff
+            if (ctrlUnderMouse != null && mouseLockedToView != gridView) {
+                if ((Input.Mouse["left"].isPressed || Input.Mouse["right"].isPressed) && mouseLockedToView == null) {
                     mouseLockedToView = interfaceView;
                 }
-
-                // handle buttons and stuff
-                if (Global.Mouse["left"].justReleased) {
-                    buttonMouse.Click?.Invoke(buttonMouse, null);
-                }
             } else
-            if (buttonMouse == null && mouseLockedToView != interfaceView) {
-                if ((Global.Mouse["left"].isPressed || Global.Mouse["right"].isPressed) && mouseLockedToView == null) {
+            
+            // handle grid stuff
+            if (ctrlUnderMouse == null && mouseLockedToView != interfaceView) {
+                if ((Input.Mouse["left"].isPressed || Input.Mouse["right"].isPressed) && mouseLockedToView == null) {
                     mouseLockedToView = gridView;
                 }
 
-                // handle grid stuff
-                if (Global.Mouse["left"].isPressed) {
+                if (Input.Mouse["left"].isPressed) {
                     cell cellUnderMouse = findCellUnderMouse();
                     
                     if (cellUnderMouse != null) {
@@ -196,11 +211,16 @@ namespace GameOfLifeSFML {
                         if (mouseSettingState < 0) { cellUnderMouse.State = false; }
                     }
                 } else
-                if (Global.Mouse["left"].justReleased) {
+                if (Input.Mouse["left"].justReleased) {
                     mouseSettingState = 0;
                 }
 
                 handleCamera(delta);
+            }
+
+            // if the mouse was released then we release it from the view
+            if (Input.Mouse["left"].justReleased || Input.Mouse["right"].justReleased) {
+                mouseLockedToView = null;
             }
 
             if (simulationSpeed > 0) {
@@ -280,8 +300,8 @@ namespace GameOfLifeSFML {
             
             window.SetView(interfaceView);
 
-            foreach (button b in buttons) {
-                b.draw(window);
+            foreach (control c in controls) {
+                c.draw(window);
             }
 
             window.Display();
@@ -300,32 +320,20 @@ namespace GameOfLifeSFML {
             }
         }
 
-        private button buttonUnderMouse() {
+        private control buttonUnderMouse() {
             if (mouseLockedToView == gridView) { return null; }
-            button bUnderMouse = null;
 
-            foreach (button b in buttons) {
-                b.MouseHovering = false;
-                b.MousePressing = false;
-
-                if (bUnderMouse == null) {
-                    if (b.Dimensions.Contains(Global.Mouse.Position.X, Global.Mouse.Position.Y)) {
-                        b.MouseHovering = true;
-                        b.MousePressing = Global.Mouse["left"].isPressed;
-                        bUnderMouse = b;
-                    }
+            foreach (control c in controls) {
+                if (c.MouseHovering) {
+                    return c;
                 }
             }
 
-            return bUnderMouse;
+            return null;
         }
 
         private cell findCellUnderMouse() {
-            foreach (button b in buttons) {
-                if (b.Dimensions.Contains(Global.Mouse.Position.X, Global.Mouse.Position.Y)) {
-                    return null;
-                }
-            }
+            if (buttonUnderMouse() != null) { return null; }
 
             cell cellUnderMouse = null;
 
@@ -334,7 +342,7 @@ namespace GameOfLifeSFML {
                 for (int col = 1; col < cells[row].Length - 1; col++) {
                     Vector2f cellPosition = new Vector2f(col * (cell.Width  + cell.OutlineThickness * 2 + cell.Spacing),
                                                             row * (cell.Height + cell.OutlineThickness * 2 + cell.Spacing));
-                    if (intersection.pointInsideRectangle(window.MapPixelToCoords(Global.Mouse.Position, gridView),
+                    if (intersection.pointInsideRectangle(window.MapPixelToCoords(Input.Mouse.Position, gridView),
                                                             new FloatRect(cellPosition.X, cellPosition.Y, cell.Width, cell.Height))) {
                         cellUnderMouse = cells[row][col];
                         break;
@@ -347,51 +355,51 @@ namespace GameOfLifeSFML {
 
         private void handleCamera(float delta) {
             // Zooming the camera            
-            if (Global.Keyboard["q"].isPressed) {
+            if (Input.Keyboard["q"].isPressed) {
                 gridView.Zoom(1 + 0.001f * delta);
             }
 
-            if (Global.Keyboard["e"].isPressed) {
+            if (Input.Keyboard["e"].isPressed) {
                 gridView.Zoom(1 - 0.001f * delta);
             }
 
             float cameraSprintMulti = 1.0f;
 
-            if (Global.Keyboard["lshift"].isPressed) {
+            if (Input.Keyboard["lshift"].isPressed) {
                 cameraSprintMulti *= 2f;
             }
 
             // Panning the camera
-            if (Global.Keyboard["w"].isPressed || Global.Keyboard["up"].isPressed) {
+            if (Input.Keyboard["w"].isPressed || Input.Keyboard["up"].isPressed) {
                 gridView.Center = new Vector2f(gridView.Center.X, gridView.Center.Y - 1 * delta * GridZoom * cameraSprintMulti);
             }
             
-            if (Global.Keyboard["a"].isPressed || Global.Keyboard["left"].isPressed) {
+            if (Input.Keyboard["a"].isPressed || Input.Keyboard["left"].isPressed) {
                 gridView.Center = new Vector2f(gridView.Center.X - 1 * delta * GridZoom * cameraSprintMulti, gridView.Center.Y);
             }
             
-            if (Global.Keyboard["s"].isPressed || Global.Keyboard["down"].isPressed) {
+            if (Input.Keyboard["s"].isPressed || Input.Keyboard["down"].isPressed) {
                 gridView.Center = new Vector2f(gridView.Center.X, gridView.Center.Y + 1 * delta * GridZoom * cameraSprintMulti);
             }
             
-            if (Global.Keyboard["d"].isPressed || Global.Keyboard["right"].isPressed) {
+            if (Input.Keyboard["d"].isPressed || Input.Keyboard["right"].isPressed) {
                 gridView.Center = new Vector2f(gridView.Center.X + 1 * delta * GridZoom * cameraSprintMulti, gridView.Center.Y);
             }
 
-            if (Global.Mouse["right"].justPressed) {
-                lastViewPos = gridView.Center + (Vector2f)Global.Mouse.Position * GridZoom;
+            if (Input.Mouse["right"].justPressed) {
+                lastViewPos = gridView.Center + (Vector2f)Input.Mouse.Position * GridZoom;
             } else
-            if (Global.Mouse["right"].isPressed) {
+            if (Input.Mouse["right"].isPressed) {
                 window.SetMouseCursor(new Cursor(Cursor.CursorType.SizeAll));
-                gridView.Center = lastViewPos - (Vector2f)Global.Mouse.Position * GridZoom;
+                gridView.Center = lastViewPos - (Vector2f)Input.Mouse.Position * GridZoom;
             } else
-            if (Global.Mouse["right"].justReleased) {
+            if (Input.Mouse["right"].justReleased) {
                 window.SetMouseCursor(new Cursor(Cursor.CursorType.Arrow));
             }
         }
 
         private void zoomViewToMouse(float zoomFactor) {
-            gridView.Move(((Vector2f)Global.Mouse.Position - Global.ScreenSize / 2f) / 10f * GridZoom);
+            gridView.Move(((Vector2f)Input.Mouse.Position - Global.ScreenSize / 2f) / 10f * GridZoom);
             gridView.Zoom(zoomFactor);
         }
 

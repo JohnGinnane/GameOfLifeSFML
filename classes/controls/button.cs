@@ -3,31 +3,8 @@ using SFML.System;
 using SFML.Graphics;
 
 namespace GameOfLifeSFML {
-    public delegate void ButtonClickedEventHandler(object sender, EventArgs e);
 
-    public class button {
-        private FloatRect dimensions = new FloatRect(0, 0, 50, 10);
-        public FloatRect Dimensions {
-            get { return dimensions; }
-            set { dimensions = value; }
-        }
-        
-        public Vector2f Position {
-            get { return new Vector2f(dimensions.Left, dimensions.Top); }
-            set {
-                dimensions.Left = value.X;
-                dimensions.Top = value.Y;
-            }
-        }
-
-        public Vector2f Size {
-            get { return new Vector2f(dimensions.Width, dimensions.Height); }
-            set {
-                dimensions.Width = value.X;
-                dimensions.Height = value.Y;
-            }
-        }
-
+    public class button : control {
         private bool isToggle = false;
         public bool IsToggle {
             get { return isToggle; }
@@ -49,20 +26,7 @@ namespace GameOfLifeSFML {
             set { characterSize = value; }
         }
 
-        private float outlineThickness = 1f;
-        public float OutlineThickness {
-            get { return outlineThickness; }
-            set { outlineThickness = value; }
-        }
-
 #region "Colours"
-        // The colour of a standard button
-        private Color fillColour;
-        public Color FillColour {
-            get { return fillColour; }
-            set { fillColour = value; }
-        }
-
         // The colour of a toggle button whose state is off
         private Color toggleOffColour;
         public Color ToggleOffColour {
@@ -106,19 +70,6 @@ namespace GameOfLifeSFML {
         }
 #endregion
 
-        private bool mouseHovering = false;
-        public bool MouseHovering {
-            get { return mouseHovering; }
-            set { mouseHovering = value; }
-        }
-
-        private bool mousePressing = false;
-        public bool MousePressing {
-            get { return mousePressing; }
-            set { mousePressing = value; }
-        }
-        public ButtonClickedEventHandler Click;
-
         public button() {
             this.Click += handleToggle;
             FillColour = Color.White;
@@ -130,7 +81,7 @@ namespace GameOfLifeSFML {
             PressColour = Colour.Yellow;
         }
 
-        public void draw(RenderWindow window) {
+        public override void draw(RenderWindow window) {
             RectangleShape rs = new RectangleShape();
             rs.Position = Position;
             rs.Size = Size;

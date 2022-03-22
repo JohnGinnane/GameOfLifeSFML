@@ -8,11 +8,5 @@ namespace GameOfLifeSFML {
             get { return screenSize; }
             set { screenSize = value; }
         }
-
-        private static keyboard kb = new keyboard();
-        public static keyboard Keyboard => kb;
-
-        private static mouse mouse = new mouse();
-        public static mouse Mouse => mouse;
     }
 }
