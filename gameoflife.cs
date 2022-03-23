@@ -27,14 +27,12 @@ namespace GameOfLifeSFML {
             }
         }
 
-        private int rows = 10;
-        private int cols = 10;
+        private int rows = 60;
+        private int cols = 60;
         
         private const float scrollSpeed = 50f;
 
         private cell[][] cells;
-
-        private bool wrapScreen = true;
 
         private DateTime lastSimulation;
 
@@ -44,6 +42,8 @@ namespace GameOfLifeSFML {
 
         private button PlayPauseButton;
         private slider SimulationSpeedSlider;
+        private button ToggleWrapScreenButton;
+
         private List<control> controls;
 
         private DateTime testTime;
@@ -71,9 +71,9 @@ namespace GameOfLifeSFML {
 
             PlayPauseButton = new button();
             PlayPauseButton.Size = new Vector2f(150, 30);
-            PlayPauseButton.Position = new Vector2f(Global.ScreenSize.X / 2f - PlayPauseButton.Size.X / 2f + 100, Global.ScreenSize.Y - PlayPauseButton.Size.Y * 1.5f);
-            PlayPauseButton.ToggleOnText = "Pause [Spacebar]";
-            PlayPauseButton.ToggleOffText = "Play [Spacebar]";
+            PlayPauseButton.Position = new Vector2f(Global.ScreenSize.X / 2f - PlayPauseButton.Size.X / 2f + 200, Global.ScreenSize.Y - PlayPauseButton.Size.Y * 1.5f);
+            PlayPauseButton.ToggleOnText = "Play [Spacebar]";
+            PlayPauseButton.ToggleOffText = "Pause [Spacebar]";
             PlayPauseButton.IsToggle = true;
             PlayPauseButton.CharacterSize = 16;
             controls.Add(PlayPauseButton);
@@ -103,6 +103,15 @@ namespace GameOfLifeSFML {
             SimulationSpeedSlider.Position = RandomiseGridButton.Position - new Vector2f(210, 0);
             SimulationSpeedSlider.Value = 0.2f;
             controls.Add(SimulationSpeedSlider);
+
+            ToggleWrapScreenButton = new button();
+            ToggleWrapScreenButton.Size = new Vector2f(140, 30);
+            ToggleWrapScreenButton.Position = SimulationSpeedSlider.Position - new Vector2f(150, 0);
+            ToggleWrapScreenButton.ToggleOnText = "Wrap Screen";
+            ToggleWrapScreenButton.ToggleOffText = "Don't Wrap Screen";
+            ToggleWrapScreenButton.IsToggle = true;
+            ToggleWrapScreenButton.CharacterSize = 16;
+            controls.Add(ToggleWrapScreenButton);
 
             // iterate over all controls and add mouse events
             foreach (control c in controls) {
@@ -179,15 +188,7 @@ namespace GameOfLifeSFML {
             if (Input.Keyboard["c"].justPressed) {
                 clearGrid();
             }
-
-            // TO DO:
-            // Rather than using the update code to handle the UI
-            // I should add events to all controls for whenever the mouse
-            // does anything like move or press a button
-            // this way each control can be aware of the mouse and
-            // respond more immediately
-            // not sure what the downsides are yet though    
-
+            
             // check if the mouse is hovering over the UI or the grid
             control ctrlUnderMouse = controlUnderMouse();
             
@@ -287,6 +288,18 @@ namespace GameOfLifeSFML {
         public void draw() {
             window.Clear(Colour.LightBlue);
             window.SetView(gridView);
+
+            // draw a border around the grid if the screen is set not to wrap
+            if (!ToggleWrapScreenButton.ToggleState) {
+                RectangleShape screenEdge = new RectangleShape();
+                screenEdge.Position = new Vector2f(cell.Width + cell.OutlineThickness + cell.Spacing,
+                                                   cell.Height + cell.OutlineThickness + cell.Spacing);
+                screenEdge.Size = new Vector2f(cols * (cell.Width + cell.OutlineThickness * 2 + cell.Spacing),
+                                               rows * (cell.Height + cell.OutlineThickness * 2 + cell.Spacing));
+                screenEdge.OutlineColor = Color.Black;
+                screenEdge.OutlineThickness = 10f;
+                window.Draw(screenEdge);
+            }
 
             cell cellUnderMouse = findCellUnderMouse();
             for (int row = 1; row < cells.Length - 1; row++) {
@@ -424,7 +437,7 @@ namespace GameOfLifeSFML {
             n.Add(new Vector2i(col,     row + 1));
             n.Add(new Vector2i(col + 1, row + 1));
 
-            if (wrapScreen) {
+            if (ToggleWrapScreenButton.ToggleState) {
                 for (int i = 0; i < n.Count; i++) {
                     if (n[i].X < 1)        { n[i] = new Vector2i(cols,   n[i].Y); }
                     if (n[i].X > rows) { n[i] = new Vector2i(1,      n[i].Y); }
