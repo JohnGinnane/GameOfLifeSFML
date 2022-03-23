@@ -20,6 +20,18 @@ namespace GameOfLifeSFML {
             set { text = value; }
         }
 
+        private string toggleOffText;
+        public string ToggleOffText {
+            get { return toggleOffText; }
+            set { toggleOffText = value; }
+        }
+
+        private string toggleOnText;
+        public string ToggleOnText {
+            get { return toggleOnText; }
+            set { toggleOnText = value; }
+        }
+
         private uint characterSize = 12;
         public uint CharacterSize {
             get { return characterSize; }
@@ -120,7 +132,17 @@ namespace GameOfLifeSFML {
             t.CharacterSize = CharacterSize;
             t.FillColor = Color.Black;
             t.Font = Fonts.Arial;
-            t.DisplayedString = text;
+            
+            if (IsToggle) {
+                if (ToggleState) {
+                    t.DisplayedString = ToggleOnText;
+                } else {
+                    t.DisplayedString = ToggleOffText;
+                }
+            } else {
+                t.DisplayedString = text;
+            }
+            
             FloatRect textLocalBounds = t.GetLocalBounds();
             t.Origin = new Vector2f(textLocalBounds.Width, textLocalBounds.Height) / 2f + new Vector2f(0, CharacterSize / 4f);
             t.Position = Size / 2f + rs.Position; // - new Vector2f(textLocalBounds.Width, 0);

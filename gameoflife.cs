@@ -9,8 +9,10 @@ namespace GameOfLifeSFML {
 #region "Properties"
         private RenderWindow window;
 
-        private DateTime lastUpdate;
+        private DateTime lastFrame;
+        public const float frameRate = 1000f / 60f;
 
+        private DateTime lastUpdate;
         public const float timeStep = 1000f / 100f;
         public float timeScale = 1.0f;
 
@@ -25,8 +27,8 @@ namespace GameOfLifeSFML {
             }
         }
 
-        private int rows = 60;
-        private int cols = 60;
+        private int rows = 30;
+        private int cols = 30;
         
         private const float scrollSpeed = 50f;
 
@@ -36,7 +38,7 @@ namespace GameOfLifeSFML {
 
         private DateTime lastSimulation;
         private float lastSimulationSpeed = 0f;
-        private float simulationSpeed = 30f;
+        private float simulationSpeed = 0f;
 
         // when we click and drag are we setting the affected cells alive or dead?
         private int mouseSettingState = 0;
@@ -45,6 +47,9 @@ namespace GameOfLifeSFML {
         private button PlayPauseButton;
         private slider SimulationSpeedSlider;
         private List<control> controls;
+
+        private DateTime testTime;
+        private int testAcc = 0;
 #endregion
 
         public GameOfLife() {
@@ -55,6 +60,7 @@ namespace GameOfLifeSFML {
             window.SetKeyRepeatEnabled(false);
             window.Closed += window_CloseWindow;
             lastUpdate = DateTime.Now;
+            lastFrame = DateTime.Now;
             
             lastViewPos = new Vector2f();
             
@@ -68,7 +74,8 @@ namespace GameOfLifeSFML {
             PlayPauseButton = new button();
             PlayPauseButton.Size = new Vector2f(150, 30);
             PlayPauseButton.Position = new Vector2f(Global.ScreenSize.X / 2f - PlayPauseButton.Size.X / 2f + 100, Global.ScreenSize.Y - PlayPauseButton.Size.Y * 1.5f);
-            PlayPauseButton.Text = "Pause";
+            PlayPauseButton.ToggleOnText = "Pause [Spacebar]";
+            PlayPauseButton.ToggleOffText = "Play [Spacebar]";
             PlayPauseButton.IsToggle = true;
             PlayPauseButton.CharacterSize = 16;
             PlayPauseButton.Click += PlayPauseButton_Click;
@@ -98,6 +105,7 @@ namespace GameOfLifeSFML {
             SimulationSpeedSlider = new slider();
             SimulationSpeedSlider.Size = new Vector2f(200, 30);
             SimulationSpeedSlider.Position = RandomiseGridButton.Position - new Vector2f(210, 0);
+            SimulationSpeedSlider.SliderValueChanged += SimulationSpeedSlider_SliderValueChanged;
             controls.Add(SimulationSpeedSlider);
 
             // iterate over all controls and add mouse events
@@ -106,6 +114,8 @@ namespace GameOfLifeSFML {
                 window.MouseButtonPressed += c.Control_MouseButtonPressed;
                 window.MouseButtonReleased += c.Control_MouseButtonReleased;
             }
+
+            testTime = DateTime.Now;
         }
 
 #region "Events"
@@ -136,6 +146,10 @@ namespace GameOfLifeSFML {
                 zoomViewToMouse(1 - 0.001f * e.Delta * scrollSpeed);
             }
         }
+
+        private void SimulationSpeedSlider_SliderValueChanged(object sender, EventArgs e) {
+            simulationSpeed = ((slider)sender).Value * (1000f / timeStep);
+        }
 #endregion
 
 #region "Main"
@@ -151,7 +165,10 @@ namespace GameOfLifeSFML {
                     update(delta);
                 }
 
-                draw();
+                if ((float)(DateTime.Now - lastFrame).TotalMilliseconds >= frameRate) {
+                    lastFrame = DateTime.Now;
+                    draw();
+                }
             }
         }
 
@@ -165,6 +182,7 @@ namespace GameOfLifeSFML {
 
             if (Input.Keyboard["space"].justPressed) {
                 playPauseSimulation();
+                PlayPauseButton.handleToggle(null, null);
             }
 
             if (Input.Keyboard["r"].justPressed) {
@@ -230,6 +248,14 @@ namespace GameOfLifeSFML {
             if (simulationSpeed > 0) {
                 if (DateTime.Now > lastSimulation.AddSeconds(1 / simulationSpeed)) {
                     lastSimulation = DateTime.Now;
+
+                    testAcc++;
+
+                    if (DateTime.Now > testTime.AddSeconds(1)) {
+                        testTime = DateTime.Now;
+                        window.SetTitle(String.Format("Game Of Life (ups: {0})", testAcc));
+                        testAcc = 0;
+                    }
 
                     // prepare new states array
                     bool[][] newStates = new bool[rows+2][];
@@ -317,10 +343,8 @@ namespace GameOfLifeSFML {
             if (simulationSpeed > 0) {
                 lastSimulationSpeed = simulationSpeed;
                 simulationSpeed = 0f;
-                PlayPauseButton.Text = "Play [spacebar]";
             } else {
                 simulationSpeed = lastSimulationSpeed;
-                PlayPauseButton.Text = "Pause [spacebar]";
             }
         }
 

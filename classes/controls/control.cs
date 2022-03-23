@@ -8,13 +8,13 @@ namespace GameOfLifeSFML {
         public delegate void ClickedEventHandler(object sender, EventArgs e);
         public ClickedEventHandler Click;
 
-        protected FloatRect dimensions = new FloatRect(0, 0, 50, 10);
-        public FloatRect Dimensions {
+        protected FloatRect dimensions = new FloatRect(0, 0, 60, 30);
+        public virtual FloatRect Dimensions {
             get { return dimensions; }
             set { dimensions = value; }
         }
         
-        public Vector2f Position {
+        public virtual Vector2f Position {
             get { return new Vector2f(dimensions.Left, dimensions.Top); }
             set {
                 dimensions.Left = value.X;
@@ -22,7 +22,7 @@ namespace GameOfLifeSFML {
             }
         }
 
-        public Vector2f Size {
+        public virtual Vector2f Size {
             get { return new Vector2f(dimensions.Width, dimensions.Height); }
             set {
                 dimensions.Width = value.X;
@@ -49,7 +49,7 @@ namespace GameOfLifeSFML {
         protected bool mousePressing = false;
         public bool MousePressing => mousePressing;
 
-        public virtual void draw(RenderWindow window) {            
+        public virtual void draw(RenderWindow window) {
             RectangleShape rs = new RectangleShape();
             rs.Position = Position;
             rs.Size = Size;
