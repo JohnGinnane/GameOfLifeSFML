@@ -27,18 +27,16 @@ namespace GameOfLifeSFML {
             }
         }
 
-        private int rows = 30;
-        private int cols = 30;
+        private int rows = 10;
+        private int cols = 10;
         
         private const float scrollSpeed = 50f;
 
         private cell[][] cells;
 
-        private bool wrapScreen = false;
+        private bool wrapScreen = true;
 
         private DateTime lastSimulation;
-        private float lastSimulationSpeed = 0f;
-        private float simulationSpeed = 0f;
 
         // when we click and drag are we setting the affected cells alive or dead?
         private int mouseSettingState = 0;
@@ -78,9 +76,7 @@ namespace GameOfLifeSFML {
             PlayPauseButton.ToggleOffText = "Play [Spacebar]";
             PlayPauseButton.IsToggle = true;
             PlayPauseButton.CharacterSize = 16;
-            PlayPauseButton.Click += PlayPauseButton_Click;
             controls.Add(PlayPauseButton);
-            playPauseSimulation();
 
             button ResetGridButton = new button();
             ResetGridButton.Use(b => {
@@ -105,7 +101,7 @@ namespace GameOfLifeSFML {
             SimulationSpeedSlider = new slider();
             SimulationSpeedSlider.Size = new Vector2f(200, 30);
             SimulationSpeedSlider.Position = RandomiseGridButton.Position - new Vector2f(210, 0);
-            SimulationSpeedSlider.SliderValueChanged += SimulationSpeedSlider_SliderValueChanged;
+            SimulationSpeedSlider.Value = 0.2f;
             controls.Add(SimulationSpeedSlider);
 
             // iterate over all controls and add mouse events
@@ -122,10 +118,6 @@ namespace GameOfLifeSFML {
         public void window_CloseWindow(object sender, EventArgs e) {
             if (sender == null) { return; }
             window.Close();
-        }
-
-        public void PlayPauseButton_Click(object sender, EventArgs e) {
-            playPauseSimulation();
         }
 
         private void ClearGridButton_Click(object sender, EventArgs e) {
@@ -145,10 +137,6 @@ namespace GameOfLifeSFML {
             if (e.Delta > 0) {
                 zoomViewToMouse(1 - 0.001f * e.Delta * scrollSpeed);
             }
-        }
-
-        private void SimulationSpeedSlider_SliderValueChanged(object sender, EventArgs e) {
-            simulationSpeed = ((slider)sender).Value * (1000f / timeStep);
         }
 #endregion
 
@@ -181,7 +169,6 @@ namespace GameOfLifeSFML {
             }
 
             if (Input.Keyboard["space"].justPressed) {
-                playPauseSimulation();
                 PlayPauseButton.handleToggle(null, null);
             }
 
@@ -245,7 +232,9 @@ namespace GameOfLifeSFML {
                 mouseLockedToView = null;
             }
 
-            if (simulationSpeed > 0) {
+            // do the actual game of life
+            if (SimulationSpeedSlider.Value > 0 && PlayPauseButton.ToggleState) {
+                float simulationSpeed = SimulationSpeedSlider.Value * (1000f / timeStep);
                 if (DateTime.Now > lastSimulation.AddSeconds(1 / simulationSpeed)) {
                     lastSimulation = DateTime.Now;
 
@@ -320,7 +309,7 @@ namespace GameOfLifeSFML {
                         if (cellUnderMouse == thisCell) {
                             rs.OutlineColor = Colour.DarkGreen;
                         } else {
-                            rs.OutlineColor = Color.White;
+                            rs.OutlineColor = Colour.LightGrey;
                         }
                     }
 
@@ -339,15 +328,6 @@ namespace GameOfLifeSFML {
 #endregion
 
 #region "Functions"
-        private void playPauseSimulation() {
-            if (simulationSpeed > 0) {
-                lastSimulationSpeed = simulationSpeed;
-                simulationSpeed = 0f;
-            } else {
-                simulationSpeed = lastSimulationSpeed;
-            }
-        }
-
         private control controlUnderMouse() {
             if (mouseLockedToView == gridView) { return null; }
 
@@ -432,28 +412,28 @@ namespace GameOfLifeSFML {
         }
 
         private List<Vector2i> getNeighbourIndices(int row, int col) {
-            List<Vector2i> neighbours = new List<Vector2i>();
-            neighbours.Add(new Vector2i(col - 1, row - 1));
-            neighbours.Add(new Vector2i(col,     row - 1));
-            neighbours.Add(new Vector2i(col + 1, row - 1));
+            List<Vector2i> n = new List<Vector2i>();
+            n.Add(new Vector2i(col - 1, row - 1));
+            n.Add(new Vector2i(col,     row - 1));
+            n.Add(new Vector2i(col + 1, row - 1));
 
-            neighbours.Add(new Vector2i(col - 1, row));
-            neighbours.Add(new Vector2i(col + 1, row));
+            n.Add(new Vector2i(col - 1, row));
+            n.Add(new Vector2i(col + 1, row));
 
-            neighbours.Add(new Vector2i(col - 1, row + 1));
-            neighbours.Add(new Vector2i(col,     row + 1));
-            neighbours.Add(new Vector2i(col + 1, row + 1));
+            n.Add(new Vector2i(col - 1, row + 1));
+            n.Add(new Vector2i(col,     row + 1));
+            n.Add(new Vector2i(col + 1, row + 1));
 
             if (wrapScreen) {
-                for (int i = 0; i < neighbours.Count; i++) {
-                    if (neighbours[i].X < 1)     { neighbours[i] = new Vector2i(cols - 2, neighbours[i].Y); }
-                    if (neighbours[i].X >= rows) { neighbours[i] = new Vector2i(1,        neighbours[i].Y); }
-                    if (neighbours[i].Y < 1)     { neighbours[i] = new Vector2i(neighbours[i].X, rows - 2); }
-                    if (neighbours[i].Y >= cols) { neighbours[i] = new Vector2i(neighbours[i].X, 1       ); }
+                for (int i = 0; i < n.Count; i++) {
+                    if (n[i].X < 1)        { n[i] = new Vector2i(cols,   n[i].Y); }
+                    if (n[i].X > rows) { n[i] = new Vector2i(1,      n[i].Y); }
+                    if (n[i].Y < 1)        { n[i] = new Vector2i(n[i].X, rows); }
+                    if (n[i].Y > cols) { n[i] = new Vector2i(n[i].X, 1); }
                 }
             }
 
-            return neighbours;
+            return n;
         }
 
         private void clearGrid() {
