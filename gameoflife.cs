@@ -13,7 +13,7 @@ namespace GameOfLifeSFML {
         public const float frameRate = 1000f / 60f;
 
         private DateTime lastUpdate;
-        public const float timeStep = 1000f / 100f;
+        public const float timeStep = 1000f / 200f;
         public float timeScale = 1.0f;
 
         public Vector2f lastViewPos;
@@ -46,8 +46,11 @@ namespace GameOfLifeSFML {
 
         private List<control> controls;
 
-        private DateTime testTime;
-        private int testAcc = 0;
+        // debugging info
+        panel debugPanel;
+
+        float updateTime;
+        float renderTime;
 #endregion
 
         public GameOfLife() {
@@ -68,6 +71,19 @@ namespace GameOfLifeSFML {
             lastSimulation = DateTime.Now;
 
             controls = new List<control>();
+
+            // debugging info
+            debugPanel = new panel();
+            debugPanel.FillColour = new Color(200, 200, 200, 150);
+            label labelDebugInfo = new label();
+            labelDebugInfo.Font = Fonts.Arial;
+            labelDebugInfo.CharacterSize = 16;
+            labelDebugInfo.Position = debugPanel.Position + new Vector2f(10, 10);
+            labelDebugInfo.FillColour = Color.White;
+            labelDebugInfo.OutlineColour = Color.Black;
+            debugPanel.add(labelDebugInfo);
+
+            controls.Add(debugPanel);
 
             PlayPauseButton = new button();
             PlayPauseButton.Size = new Vector2f(150, 30);
@@ -119,8 +135,6 @@ namespace GameOfLifeSFML {
                 window.MouseButtonPressed += c.Control_MouseButtonPressed;
                 window.MouseButtonReleased += c.Control_MouseButtonReleased;
             }
-
-            testTime = DateTime.Now;
         }
 
 #region "Events"
@@ -152,20 +166,27 @@ namespace GameOfLifeSFML {
 #region "Main"
         public void run() {
             while (window.IsOpen) {
-                if (!window.HasFocus()) { continue; }
+                if (!window.HasFocus()) { continue; }                
+                ((label)debugPanel.Children[0]).Text = String.Format("Update: {0:n4}ms\nRender: {1:n4}ms", 
+                                                                     updateTime,
+                                                                     renderTime);
 
-                if ((float)(DateTime.Now - lastUpdate).TotalMilliseconds >= timeStep) {
+                if (DateTime.Now > lastUpdate.AddMilliseconds(timeStep)) {
                     float delta = timeStep * timeScale;
-                    lastUpdate = DateTime.Now;
-
                     window.DispatchEvents();
+                    DateTime beforeUpdate = DateTime.Now;
                     update(delta);
+                    lastUpdate = DateTime.Now;
+                    updateTime = (float)(lastUpdate - beforeUpdate).TotalMilliseconds;
                 }
 
-                if ((float)(DateTime.Now - lastFrame).TotalMilliseconds >= frameRate) {
-                    lastFrame = DateTime.Now;
+                if (DateTime.Now > lastFrame.AddMilliseconds(frameRate)) {
+                    DateTime beforeDraw = DateTime.Now;
                     draw();
+                    lastFrame = DateTime.Now;
+                    renderTime = (float)(lastFrame - beforeDraw).TotalMilliseconds;
                 }
+                
             }
         }
 
@@ -239,14 +260,6 @@ namespace GameOfLifeSFML {
                 if (DateTime.Now > lastSimulation.AddSeconds(1 / simulationSpeed)) {
                     lastSimulation = DateTime.Now;
 
-                    testAcc++;
-
-                    if (DateTime.Now > testTime.AddSeconds(1)) {
-                        testTime = DateTime.Now;
-                        window.SetTitle(String.Format("Game Of Life (ups: {0})", testAcc));
-                        testAcc = 0;
-                    }
-
                     // prepare new states array
                     bool[][] newStates = new bool[rows+2][];
                     for (int i = 0; i < newStates.Length; i++) {
@@ -305,12 +318,15 @@ namespace GameOfLifeSFML {
             for (int row = 1; row < cells.Length - 1; row++) {
                 for (int col = 1; col < cells[row].Length - 1; col++) {
                     cell thisCell = cells[row][col];
-
+                    
+                    // dont render cells outside the view
+                    Vector2f cellPos = new Vector2f(col * (cell.Width  + cell.OutlineThickness * 2 + cell.Spacing),
+                                                    row * (cell.Height + cell.OutlineThickness * 2 + cell.Spacing));
+                    
                     RectangleShape rs = new RectangleShape(new Vector2f(cell.Width, cell.Height));
                     rs.FillColor = thisCell.Temperature;
                     rs.OutlineThickness = cell.OutlineThickness;
-                    rs.Position = new Vector2f(col * (cell.Width  + cell.OutlineThickness * 2 + cell.Spacing),
-                                               row * (cell.Height + cell.OutlineThickness * 2 + cell.Spacing));
+                    rs.Position = cellPos;
 
                     if (thisCell.State) {
                         if (cellUnderMouse == thisCell) {

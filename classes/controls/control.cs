@@ -4,6 +4,8 @@ using SFML.Graphics;
 using SFML.Window;
 
 namespace GameOfLifeSFML {
+    // Basic concept of a control which can be used to create
+    // more complex controls such as buttons
     public abstract class control {
         public delegate void ClickedEventHandler(object sender, EventArgs e);
         public ClickedEventHandler Click;
@@ -14,17 +16,21 @@ namespace GameOfLifeSFML {
             set { dimensions = value; }
         }
         
+        private Vector2f position;
         public virtual Vector2f Position {
-            get { return new Vector2f(dimensions.Left, dimensions.Top); }
+            get { return position; }
             set {
+                position = value;
                 dimensions.Left = value.X;
                 dimensions.Top = value.Y;
             }
         }
 
+        private Vector2f size;
         public virtual Vector2f Size {
-            get { return new Vector2f(dimensions.Width, dimensions.Height); }
+            get { return size; }
             set {
+                size = value;
                 dimensions.Width = value.X;
                 dimensions.Height = value.Y;
             }
@@ -37,7 +43,7 @@ namespace GameOfLifeSFML {
         }
 
         // The colour of a standard button
-        protected Color fillColour;
+        protected Color fillColour = Colour.None;
         public Color FillColour {
             get { return fillColour; }
             set { fillColour = value; }
@@ -55,8 +61,7 @@ namespace GameOfLifeSFML {
             rs.Size = Size;
             rs.OutlineColor = Color.Black;
             rs.OutlineThickness = OutlineThickness;
-
-            if (MouseHovering) { rs.OutlineThickness *= 2f; }
+            rs.FillColor = FillColour;
 
             window.Draw(rs);
         }
@@ -71,7 +76,9 @@ namespace GameOfLifeSFML {
 
         public virtual void Control_MouseButtonPressed(object sender, MouseButtonEventArgs e) {
             if (MouseHovering) {
-                mousePressing = true;
+                if (!MousePressing) {
+                    mousePressing = true;
+                }
             }
         }
 
@@ -80,7 +87,7 @@ namespace GameOfLifeSFML {
             if (MouseHovering && MousePressing) {
                 this.Click?.Invoke(sender, e);
             }
-            
+
             mousePressing = false;
         }
     }
