@@ -138,6 +138,36 @@ namespace GameOfLifeSFML {
             return new FloatRect(rs.Position, rs.Size);
         }
 
+        public static Vector2f Position(FloatRect fr) {
+            return new Vector2f(fr.Left, fr.Top);
+        }
+
+        public static Vector2f Size(FloatRect fr) {
+            return new Vector2f(fr.Width, fr.Height);
+        }
+
+        public static FloatRect PointsToFloatRect(Vector2f a, Vector2f b) {
+            FloatRect output = new FloatRect();
+
+            if (a.X > b.X) {
+                output.Left = b.X;
+                output.Width = a.X - b.X;
+            } else {
+                output.Left = a.X;
+                output.Width = b.X - a.X;
+            }
+
+            if (a.Y > b.Y) {
+                output.Top = b.Y;
+                output.Height = a.Y - b.Y;
+            } else {
+                output.Top = a.Y;
+                output.Height = b.Y - a.Y;
+            }
+
+            return output;
+        }
+
         public static VertexArray translate(VertexArray va, Vector2f offset) {
             if (offset == new Vector2f()) { return va; }
             VertexArray newVa = new VertexArray(va.PrimitiveType, va.VertexCount);

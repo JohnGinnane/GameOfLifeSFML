@@ -3,6 +3,8 @@ using SFML.Graphics;
 namespace GameOfLifeSFML {
     public static class Colour {
         public static Color None = new Color(0, 0, 0, 0);
+
+        public static Color VeryOpaque = new Color(255, 255, 255, 100);
         public static Color LightRed = new Color(255, 170, 170);
         public static Color Red = new Color(253, 58, 58);
         public static Color LightYellow = new Color(255, 240, 200);

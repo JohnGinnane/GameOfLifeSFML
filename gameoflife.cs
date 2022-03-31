@@ -37,12 +37,19 @@ namespace GameOfLifeSFML {
         private DateTime lastSimulation;
 
         // when we click and drag are we setting the affected cells alive or dead?
-        private int mouseSettingState = 0;
+        private FloatRect mouseSelectionBox;
+        public bool SelectingCells {
+            get {
+                return Math.Abs(mouseSelectionBox.Width) > 0.5 && Math.Abs(mouseSelectionBox.Height) > 0.5;
+            }
+        }
         private View mouseLockedToView;
 
         private button PlayPauseButton;
         private slider SimulationSpeedSlider;
         private button ToggleWrapScreenButton;
+
+        private Text actionText;
 
         private List<control> controls;
 
@@ -67,8 +74,14 @@ namespace GameOfLifeSFML {
             
             generateGrid();
             window.MouseWheelScrolled += mouseWheelScrolled;
+            mouseSelectionBox = new FloatRect();
 
             lastSimulation = DateTime.Now;
+            
+            actionText = new Text();
+            actionText.Font = Fonts.Arial;
+            actionText.FillColor = Color.Black;
+            actionText.CharacterSize = 16;
 
             controls = new List<control>();
 
@@ -85,6 +98,7 @@ namespace GameOfLifeSFML {
 
             controls.Add(debugPanel);
 
+            // interface
             PlayPauseButton = new button();
             PlayPauseButton.Size = new Vector2f(150, 30);
             PlayPauseButton.Position = new Vector2f(Global.ScreenSize.X / 2f - PlayPauseButton.Size.X / 2f + 200, Global.ScreenSize.Y - PlayPauseButton.Size.Y * 1.5f);
@@ -216,7 +230,9 @@ namespace GameOfLifeSFML {
             // if you start a click and you're hovering over a control
             // then "lock" the mouse so it only interacts with controls...
             if (ctrlUnderMouse != null && mouseLockedToView != gridView) {
-                if ((Input.Mouse["left"].isPressed || Input.Mouse["right"].isPressed) && mouseLockedToView == null) {
+                if ((Input.Mouse["left"].isPressed ||
+                     Input.Mouse["right"].isPressed ||
+                     Input.Mouse["middle"].isPressed) && mouseLockedToView == null) {
                     mouseLockedToView = interfaceView;
                 }
             } else
@@ -224,34 +240,79 @@ namespace GameOfLifeSFML {
             // ...or lock it to the grid so you don't accidentally
             // interact with the interface
             if (ctrlUnderMouse == null && mouseLockedToView != interfaceView) {
-                if ((Input.Mouse["left"].isPressed || Input.Mouse["right"].isPressed) && mouseLockedToView == null) {
+                if ((Input.Mouse["left"].isPressed ||
+                     Input.Mouse["right"].isPressed ||
+                     Input.Mouse["middle"].isPressed) && mouseLockedToView == null) {
                     mouseLockedToView = gridView;
                 }
 
-                if (Input.Mouse["left"].isPressed) {
-                    cell cellUnderMouse = findCellUnderMouse();
-                    
-                    if (cellUnderMouse != null) {
-                        if (mouseSettingState == 0) {
-                            // if we clicked on a living cell then any new cells to hover over
-                            // will be set to dead, and vice versa
-                            if (cellUnderMouse.State) { mouseSettingState = -1; } else { mouseSettingState = 1; }
+                if (Input.Mouse["left"].justPressed) {
+                    actionText.DisplayedString = "Draw";
+                    FloatRect textLocalBounds = actionText.GetLocalBounds();
+                    actionText.Origin = new Vector2f(textLocalBounds.Width, textLocalBounds.Height) / 2f + new Vector2f(0, actionText.CharacterSize / 4f);
+                } else
+                if (Input.Mouse["right"].justPressed) {
+                    actionText.DisplayedString = "Clear";
+                    FloatRect textLocalBounds = actionText.GetLocalBounds();
+                    actionText.Origin = new Vector2f(textLocalBounds.Width, textLocalBounds.Height) / 2f + new Vector2f(0, actionText.CharacterSize / 4f);
+                }
+
+                if (Input.Mouse["left"].isPressed || Input.Mouse["right"].isPressed) {
+                    Vector2i mousePosRelativeToClick = Input.Mouse.Position - Input.Mouse.ClickPosition;
+
+                    if (Input.Keyboard["lshift"].isPressed) {
+                        // holding down shift lets you draw a perfect square
+                        int shortestSide = 0;
+                        shortestSide = Math.Abs(mousePosRelativeToClick.X);
+                        if (Math.Abs(mousePosRelativeToClick.Y) < shortestSide) {
+                            shortestSide = Math.Abs(mousePosRelativeToClick.Y);
                         }
 
-                        if (mouseSettingState > 0) { cellUnderMouse.State = true; }
-                        if (mouseSettingState < 0) { cellUnderMouse.State = false; }
+                        int width = shortestSide;
+                        int height = shortestSide;
+
+                        if (mousePosRelativeToClick.X < 0) {
+                            width *= -1;
+                        }
+
+                        if (mousePosRelativeToClick.Y < 0) {
+                            height *= -1;
+                        }
+
+                        mouseSelectionBox = new FloatRect(Input.Mouse.ClickPosition.X,
+                                                          Input.Mouse.ClickPosition.Y,
+                                                          width,
+                                                          height);
+                    } else {
+                        mouseSelectionBox = new FloatRect(Input.Mouse.ClickPosition.X,
+                                                        Input.Mouse.ClickPosition.Y,
+                                                        mousePosRelativeToClick.X,
+                                                        mousePosRelativeToClick.Y);
                     }
-                } else
-                if (Input.Mouse["left"].justReleased) {
-                    mouseSettingState = 0;
+                }
+
+                if (Input.Mouse["left"].justReleased || Input.Mouse["right"].justReleased) {
+                    if (SelectingCells) {
+                        Vector2f mouseStartPos = window.MapPixelToCoords((Vector2i)util.Position(mouseSelectionBox), gridView);
+                        Vector2f mouseEndPos = window.MapPixelToCoords((Vector2i)(util.Position(mouseSelectionBox) + util.Size(mouseSelectionBox)), gridView);
+
+                        setCellsInBox(util.PointsToFloatRect(mouseStartPos, mouseEndPos),
+                                    Input.Mouse["left"].justReleased);
+                    } else {
+                        cell c = findCellUnderMouse();
+                        c.State = !c.State;
+                    }
                 }
 
                 handleCamera(delta);
             }
 
             // if the mouse was released then we release it from the view
-            if (Input.Mouse["left"].justReleased || Input.Mouse["right"].justReleased) {
+            if (Input.Mouse["left"].justReleased ||
+                Input.Mouse["right"].justReleased ||
+                Input.Mouse["middle"].justReleased) {
                 mouseLockedToView = null;
+                mouseSelectionBox = new FloatRect();
             }
 
             // do the actual game of life
@@ -302,6 +363,10 @@ namespace GameOfLifeSFML {
             window.Clear(Colour.LightBlue);
             window.SetView(gridView);
 
+            ///////////////
+            // GRID VIEW //
+            ///////////////
+
             // draw a border around the grid if the screen is set not to wrap
             if (!ToggleWrapScreenButton.ToggleState) {
                 RectangleShape screenEdge = new RectangleShape();
@@ -330,13 +395,13 @@ namespace GameOfLifeSFML {
 
                     if (thisCell.State) {
                         if (cellUnderMouse == thisCell) {
-                            rs.OutlineColor = Color.Green;
+                            rs.OutlineColor = Colour.DarkGreen;
                         } else {
                             rs.OutlineColor = Color.Black;
                         }
                     } else {
                         if (cellUnderMouse == thisCell) {
-                            rs.OutlineColor = Colour.DarkGreen;
+                            rs.OutlineColor = Color.Green;
                         } else {
                             rs.OutlineColor = Colour.LightGrey;
                         }
@@ -348,6 +413,25 @@ namespace GameOfLifeSFML {
             
             window.SetView(interfaceView);
 
+            ////////////////////
+            // INTERFACE VIEW //
+            ////////////////////
+            if (SelectingCells) {
+                RectangleShape selectBox = new RectangleShape();
+                selectBox.Position = util.Position(mouseSelectionBox);
+                selectBox.Size = util.Size(mouseSelectionBox);
+                selectBox.FillColor = Colour.VeryOpaque;
+                selectBox.OutlineThickness = 2f;
+                selectBox.OutlineColor = Color.Black;
+                window.Draw(selectBox);
+
+                // tell the user what sort of box we are doing                
+                if (Math.Abs(util.Size(mouseSelectionBox).X) > 50 &&
+                    Math.Abs(util.Size(mouseSelectionBox).Y) > actionText.CharacterSize * 1.5) {
+                    actionText.Position = util.Position(mouseSelectionBox) + util.Size(mouseSelectionBox) / 2f;
+                    window.Draw(actionText);
+                }
+            }
             foreach (control c in controls) {
                 c.draw(window);
             }
@@ -390,6 +474,26 @@ namespace GameOfLifeSFML {
             return cellUnderMouse;
         }
 
+        private void setCellsInBox(FloatRect box, bool newState) {
+            if (controlUnderMouse() != null) { return; }
+
+            // the more efficient way to do this is
+            // find the row and column for the top left 
+            // most corner and bottom right corner
+            // then iterate only over those rows and 
+            // columns, saving going over every single cell
+            for (int row = 1; row < cells.Length - 1; row++) {
+                for (int col = 1; col < cells[row].Length - 1; col++) {
+                    Vector2f cellPosition = new Vector2f(col * (cell.Width  + cell.OutlineThickness * 2 + cell.Spacing),
+                                                         row * (cell.Height + cell.OutlineThickness * 2 + cell.Spacing));
+                    if (intersection.rectangleInsideRectangle(box,
+                                                              new FloatRect(cellPosition.X, cellPosition.Y, cell.Width, cell.Height))) {
+                        cells[row][col].State = newState;
+                    }
+                }
+            }
+        }
+
         private void handleCamera(float delta) {
             // Zooming the camera            
             if (Input.Keyboard["q"].isPressed) {
@@ -423,15 +527,17 @@ namespace GameOfLifeSFML {
                 gridView.Center = new Vector2f(gridView.Center.X + 1 * delta * GridZoom * cameraSprintMulti, gridView.Center.Y);
             }
 
-            if (Input.Mouse["right"].justPressed) {
-                lastViewPos = gridView.Center + (Vector2f)Input.Mouse.Position * GridZoom;
-            } else
-            if (Input.Mouse["right"].isPressed) {
-                window.SetMouseCursor(new Cursor(Cursor.CursorType.SizeAll));
-                gridView.Center = lastViewPos - (Vector2f)Input.Mouse.Position * GridZoom;
-            } else
-            if (Input.Mouse["right"].justReleased) {
-                window.SetMouseCursor(new Cursor(Cursor.CursorType.Arrow));
+            if (mouseLockedToView == gridView) {
+                if (Input.Mouse["middle"].justPressed) {
+                    lastViewPos = gridView.Center + (Vector2f)Input.Mouse.Position * GridZoom;
+                } else
+                if (Input.Mouse["middle"].isPressed) {
+                    window.SetMouseCursor(new Cursor(Cursor.CursorType.SizeAll));
+                    gridView.Center = lastViewPos - (Vector2f)Input.Mouse.Position * GridZoom;
+                } else
+                if (Input.Mouse["middle"].justReleased) {
+                    window.SetMouseCursor(new Cursor(Cursor.CursorType.Arrow));
+                }
             }
         }
 
