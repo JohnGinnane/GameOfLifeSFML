@@ -300,7 +300,7 @@ namespace GameOfLifeSFML {
                                     Input.Mouse["left"].justReleased);
                     } else {
                         cell c = findCellUnderMouse();
-                        c.State = !c.State;
+                        if (c != null) { c.State = !c.State; }
                     }
                 }
 
